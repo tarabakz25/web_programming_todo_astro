@@ -2,19 +2,30 @@ import type { Task, Status } from '@/types/task';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { v4 as uuid } from 'uuid';
 import { useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import { CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export default function AddTask() {
   const [tasks, setTasks] = useLocalStorage<Task[]>('cp-tasks', []);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDifficulty, setNewTaskDifficulty] = useState<number | ''>('');
   const [newTaskPlatform, setNewTaskPlatform] = useState<Task['platform']>('atcoder');
-  const [newTaskDue, setNewTaskDue] = useState('');
+  const [newTaskDue, setNewTaskDue] = useState<Date | undefined>(undefined);
   const [newTaskUrl, setNewTaskUrl] = useState('');
   const [newTaskTags, setNewTaskTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   function addTask() {
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim()) {
+      setError('タスク名を入力してください');
+      return;
+    }
 
     // プラットフォームごとの固定URLを定義
     const platformUrls = {
@@ -35,7 +46,7 @@ export default function AddTask() {
       status: 'todo' as Status,
       platform: newTaskPlatform,
       ...(newTaskDifficulty !== '' && { difficulty: Number(newTaskDifficulty) }),
-      ...(newTaskDue && { due: newTaskDue }),
+      ...(newTaskDue && { due: format(newTaskDue, 'yyyy-MM-dd') }),
       ...(generatedUrl && { url: generatedUrl }),
       ...(newTaskTags.length > 0 && { tags: newTaskTags }),
     }]);
@@ -43,15 +54,17 @@ export default function AddTask() {
     setNewTaskTitle('');
     setNewTaskDifficulty('');
     setNewTaskPlatform('atcoder');
-    setNewTaskDue('');
+    setNewTaskDue(undefined);
     setNewTaskUrl('');
     setNewTaskTags([]);
     setTagInput('');
+    setError(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     addTask();
+    setError(null);
   }
 
   function addTag() {
@@ -122,16 +135,28 @@ export default function AddTask() {
           />
         </div>
         <div>
-          <label htmlFor="due" className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             日程 *
           </label>
-          <input
-            id="due"
-            type="date"
-            value={newTaskDue}
-            onChange={(e) => setNewTaskDue(e.target.value)}
-            className="w-full px-3 py-2 border border-teal-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal border-teal-300 hover:border-teal-400 focus:ring-2 focus:ring-teal-500"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {newTaskDue ? format(newTaskDue, 'yyyy年MM月dd日', { locale: ja }) : '日程を選択してください'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={newTaskDue}
+                onSelect={setNewTaskDue}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
         <div>
           <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
@@ -175,6 +200,12 @@ export default function AddTask() {
             </div>
           )}
         </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>エラー</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <button
           type="submit"
           className="w-full px-4 py-2 bg-teal-500 text-white rounded-sm hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
