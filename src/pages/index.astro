@@ -1,10 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import TaskList from '@/components/TaskList';
+import AddTask from '@/components/AddTask';
 ---
 
 <Layout>
-  <div class="max-w-xl mx-auto p-4 space-y-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-screen">
+    <AddTask client:load />
     <TaskList client:load />
   </div>
 </Layout>
